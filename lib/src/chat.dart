@@ -1,45 +1,53 @@
+import 'package:chat_mobile/src/shared_state/chat.dart';
+import 'package:chat_mobile/src/shared_state/user.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+import 'package:provider/provider.dart';
 
 class Chat extends StatefulWidget {
-  final String receiver;
-  Chat({@required this.receiver});
+  static const chatRouteName = "/chat";
+  String receiver;
 
   @override
   State<StatefulWidget> createState() {
-    return _ChatState(chat: this);
+    return _ChatState();
   }
 }
 
-class ChatMessage {
-  String sender;
-  String receiver;
-  String message;
-  DateTime sendingTime;
-
-  ChatMessage({@required this.sender, @required this.receiver,
-    @required this.message, this.sendingTime});
-}
-
 class _ChatState extends State<Chat> {
-  final Chat chat;
-  List<ChatMessage> messages;
   TextEditingController messageInputController ;
 
-  _ChatState({
-    @required this.chat
-  }) {
+  _ChatState() {
+
     messageInputController = TextEditingController(text: "");
-    messages = [];
+  }
+
+  _sendChate(ChatData chatData, String receiver, String sender) {
+    if (messageInputController.text != "") {
+      ChatMessage message = ChatMessage(sender: sender, receiver: receiver, message: messageInputController.text);
+      message.sendingTime = DateTime.now();
+      this.messageInputController.clear();
+      chatData.sendChat(message);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    Map args = ModalRoute.of(context).settings.arguments;
+    String receiver = args["receiver"];
+
+    User user = Provider.of<User>(context);
+    ChatData chatData = Provider.of<ChatData>(context);
+    List<ChatMessage> messages = [];
+    if (chatData.chatByReceiver.containsKey(receiver)) {
+      messages = chatData.chatByReceiver[receiver];
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(this.chat.receiver),
+        title: Text(receiver),
       ),
 
       body: Column(
@@ -47,12 +55,11 @@ class _ChatState extends State<Chat> {
           Flexible(
             flex: 5,
             child: ListView(
-              children: this.messages.map((ChatMessage message) {
+              children: messages.map((ChatMessage message) {
                 return ListTile(
                   title: Text(message.sender + " said: "),
                   subtitle: Text(message.message),
                 );
-//                return Text(message);
               }).toList(),
             ),
           ),
@@ -74,16 +81,7 @@ class _ChatState extends State<Chat> {
                   flex: 1,
                   child: RaisedButton(
                     child: Text("Send"),
-                    onPressed: () {
-                      setState(() {
-                        if (messageInputController.text != "") {
-                          ChatMessage message = ChatMessage(sender: "todo", receiver: this.chat.receiver, message: messageInputController.text);
-                          message.sendingTime = DateTime.now();
-                          this.messages.add(message);
-                          this.messageInputController.clear();
-                        }
-                      });
-                    }
+                    onPressed: () => this._sendChate(chatData, receiver, user.username),
                   ),
                 )
               ],
